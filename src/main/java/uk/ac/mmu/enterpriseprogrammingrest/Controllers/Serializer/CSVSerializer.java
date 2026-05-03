@@ -1,5 +1,6 @@
 package uk.ac.mmu.enterpriseprogrammingrest.Controllers.Serializer;
 
+
 import com.opencsv.CSVWriter;
 import java.io.*;
 import java.lang.reflect.Field;
@@ -23,13 +24,5 @@ public class CSVSerializer<T> implements Serializer<T> {
     writer.writeNext(values);
     writer.close();
     return out.toString();
-  }
-
-  private Object convert(Class<?> type, String value) {
-    if (type == int.class || type == Integer.class) return Integer.parseInt(value);
-    if (type == long.class || type == Long.class) return Long.parseLong(value);
-    if (type == double.class || type == Double.class) return Double.parseDouble(value);
-    if (type == boolean.class || type == Boolean.class) return Boolean.parseBoolean(value);
-    return value; // String fallback
   }
 }
