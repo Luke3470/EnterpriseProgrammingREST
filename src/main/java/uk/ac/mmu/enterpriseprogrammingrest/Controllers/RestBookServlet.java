@@ -1,7 +1,6 @@
 package uk.ac.mmu.enterpriseprogrammingrest.Controllers;
 
 import java.io.IOException;
-import java.util.List;
 import javax.servlet.annotation.WebServlet;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
@@ -19,13 +18,12 @@ import uk.ac.mmu.enterpriseprogrammingrest.model.data.BookVO;
 public class RestBookServlet extends HttpServlet {
 
   private ContentRegistry registry;
-  private BookDAO bookDAO;
   private BookService bookService;
 
   @Override
   public void init() {
     this.registry = new ContentRegistry();
-    this.bookDAO = (BookDAO) getServletContext().getAttribute("bookDAO");
+    BookDAO bookDAO = (BookDAO) getServletContext().getAttribute("bookDAO");
     this.bookService = new BookService(bookDAO);
   }
 
