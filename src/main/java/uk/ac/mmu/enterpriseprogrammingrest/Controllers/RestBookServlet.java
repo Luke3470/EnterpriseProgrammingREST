@@ -1,14 +1,12 @@
 package uk.ac.mmu.enterpriseprogrammingrest.Controllers;
 
-import java.io.*;
+import java.io.IOException;
 import java.util.List;
 import javax.servlet.annotation.WebServlet;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
-
-import uk.ac.mmu.enterpriseprogrammingrest.Controllers.Request.DeleteReq;
 import uk.ac.mmu.enterpriseprogrammingrest.Controllers.Response.GetRes;
 import uk.ac.mmu.enterpriseprogrammingrest.Controllers.Serializer.Serializer;
 import uk.ac.mmu.enterpriseprogrammingrest.Controllers.decoders.Decoder;
@@ -19,13 +17,15 @@ import uk.ac.mmu.enterpriseprogrammingrest.model.data.BookVO;
 @WebServlet("/bookAPI")
 public class RestBookServlet extends HttpServlet {
 
-  private final ContentRegistry registry = new ContentRegistry();
+  private ContentRegistry registry;
   private BookDAO bookDAO;
 
   @Override
   public void init() {
+    this.registry = new ContentRegistry();
     this.bookDAO = (BookDAO) getServletContext().getAttribute("bookDAO");
   }
+
 
   @Override
   public void doGet(HttpServletRequest request, HttpServletResponse response) throws IOException {
@@ -41,34 +41,34 @@ public class RestBookServlet extends HttpServlet {
       response.sendError(406, "Unsupported output type");
       return;
     }
-    Serializer<GetRes> serializer = registry.getSerializer(outType);
+
+    Serializer<?> serializer = registry.getSerializer(outType);
 
     BookFilterDTO filter = BookFilterDTO.fromRequest(request);
 
     List<BookVO> books = bookDAO.getBooks(filter);
     int count = bookDAO.countBooks(filter);
     int totalPages = (int) Math.ceil((double) count / filter.getSize());
-    int currentPage = filter.getPage();
 
-    GetRes data = new GetRes(
-        books,
-        currentPage,
-        totalPages
-    );
+    GetRes data = new GetRes(books, filter.getPage(), totalPages);
 
     response.setContentType(outType);
     response.setCharacterEncoding("UTF-8");
+
     try {
-      response.getWriter().write(serializer.serialize(data));
+      response.getWriter().write(
+          ((Serializer<Object>) serializer).serialize(data)
+      );
     } catch (Exception e) {
       response.sendError(500, e.getMessage());
     }
   }
 
+
   @Override
   public void doPost(HttpServletRequest request, HttpServletResponse response) throws IOException {
 
-    String contentType = request.getContentType();
+    String contentType = cleanContentType(request.getContentType());
     String accept = request.getHeader("Accept");
 
     Decoder<BookVO> decoder = registry.getDecoder(contentType);
@@ -78,38 +78,36 @@ public class RestBookServlet extends HttpServlet {
       return;
     }
 
-    String body = request.getReader()
-        .lines()
-        .reduce("", (a, b) -> a + b);
-
     BookVO data;
 
     try {
-      data = decoder.decode(body, BookVO.class);
+      data = decoder.decode(readBody(request), BookVO.class);
     } catch (Exception e) {
       response.sendError(400, "Invalid request body: " + e.getMessage());
       return;
     }
 
-    String outType = ContentNegotiator.negotiate(
-        accept,
-        registry.supportedTypes()
-    );
+    String outType = ContentNegotiator.negotiate(accept, registry.supportedTypes());
 
     if (outType == null) {
       response.sendError(406, "Unsupported output type");
       return;
     }
 
-    Serializer<BookVO> serializer = registry.getSerializer(outType);
+    Serializer<?> serializer = registry.getSerializer(outType);
 
     try {
       BookVO newBook = bookDAO.addBook(data);
 
+      response.setStatus(HttpServletResponse.SC_CREATED);
       response.setContentType(outType);
       response.setCharacterEncoding("UTF-8");
-      response.setStatus(HttpServletResponse.SC_CREATED);
-      response.getWriter().write(serializer.serialize(newBook));
+
+      response.setHeader("Location", "/bookAPI?id=" + newBook.getId());
+
+      response.getWriter().write(
+          ((Serializer<Object>) serializer).serialize(newBook)
+      );
 
     } catch (Exception e) {
       response.sendError(500, "Failed to create book: " + e.getMessage());
@@ -119,7 +117,8 @@ public class RestBookServlet extends HttpServlet {
   @Override
   public void doPut(HttpServletRequest request, HttpServletResponse response) throws IOException {
 
-    String contentType = request.getContentType();
+    String contentType = cleanContentType(request.getContentType());
+
     Decoder<BookVO> decoder = registry.getDecoder(contentType);
 
     if (decoder == null) {
@@ -127,14 +126,10 @@ public class RestBookServlet extends HttpServlet {
       return;
     }
 
-    String body = request.getReader()
-        .lines()
-        .reduce("", (a, b) -> a + b);
-
     BookVO data;
 
     try {
-      data = decoder.decode(body, BookVO.class);
+      data = decoder.decode(readBody(request), BookVO.class);
     } catch (Exception e) {
       response.sendError(400, "Invalid request body: " + e.getMessage());
       return;
@@ -144,42 +139,44 @@ public class RestBookServlet extends HttpServlet {
       bookDAO.updateBook(data);
 
       response.setStatus(HttpServletResponse.SC_NO_CONTENT);
-      return;
+      response.setContentLength(0);
+
     } catch (Exception e) {
-      response.sendError(500, "Failed to edit book: " + e.getMessage());
+      response.sendError(500, "Failed to update book: " + e.getMessage());
     }
   }
 
   @Override
   public void doDelete(HttpServletRequest request, HttpServletResponse response) throws IOException {
 
-    String contentType = request.getContentType();
-    Decoder<DeleteReq> decoder = registry.getDecoder(contentType);
+    String idParam = request.getParameter("id");
 
-    if (decoder == null) {
-      response.sendError(415, "Unsupported input type");
+    if (idParam == null) {
+      response.sendError(400, "Missing id");
       return;
     }
 
-    String body = request.getReader()
+    try {
+      int id = Integer.parseInt(idParam);
+      bookDAO.deleteBook(id);
+
+      response.setStatus(HttpServletResponse.SC_NO_CONTENT);
+      response.setContentLength(0);
+
+    } catch (Exception e) {
+      response.sendError(500, "Failed to delete book: " + e.getMessage());
+    }
+  }
+
+
+  private String readBody(HttpServletRequest request) throws IOException {
+    return request.getReader()
         .lines()
         .reduce("", (a, b) -> a + b);
+  }
 
-    DeleteReq data;
-
-    try {
-      data = decoder.decode(body, DeleteReq.class);
-    } catch (Exception e) {
-      response.sendError(400, "Invalid request body: " + e.getMessage());
-      return;
-    }
-
-    try {
-      bookDAO.deleteBook(data.getId());
-      response.setStatus(HttpServletResponse.SC_NO_CONTENT);
-      return;
-    } catch (Exception e) {
-      response.sendError(500, "Failed to edit book: " + e.getMessage());
-    }
+  private String cleanContentType(String contentType) {
+    if (contentType == null) return null;
+    return contentType.split(";")[0];
   }
 }
