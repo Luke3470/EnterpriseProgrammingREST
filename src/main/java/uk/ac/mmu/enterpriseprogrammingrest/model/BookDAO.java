@@ -15,7 +15,7 @@ public interface BookDAO {
 
   void deleteBook(int id);
 
-  void updateBook(BookVO book);
+  boolean updateBook(BookVO book);
 
   int countBooks(BookFilterDTO filterDTO);
 

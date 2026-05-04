@@ -144,13 +144,14 @@ public class BookDAOImpl implements BookDAO {
       return book;
     }
 
-     @Override
-    public void updateBook(BookVO book) {
+    @Override
+    public boolean updateBook(BookVO book) {
+
         String sql = """
-            UPDATE books 
-            SET title=?, author=?, date=?, genres=?, characters=?, synopsis=?, coverUrl=? 
-            WHERE id=?
-        """;
+        UPDATE books 
+        SET title=?, author=?, date=?, genres=?, characters=?, synopsis=?, coverUrl=? 
+        WHERE id=?
+    """;
 
         try (
             Connection conn = db.createCon();
@@ -165,10 +166,14 @@ public class BookDAOImpl implements BookDAO {
             ps.setString(7, book.getCoverUrl());
             ps.setInt(8, book.getId());
 
-            ps.executeUpdate();
+            int rows = ps.executeUpdate();
+
+            return rows > 0;
 
         } catch (SQLException e) {
-            throw new DataAccessException("Failed to update book: "+ book.getId(), e);
+            throw new DataAccessException(
+                "Failed to update book: " + book.getId(), e
+            );
         }
     }
 

@@ -10,6 +10,7 @@ import javax.servlet.http.HttpServletResponse;
 import uk.ac.mmu.enterpriseprogrammingrest.Controllers.Response.GetRes;
 import uk.ac.mmu.enterpriseprogrammingrest.Controllers.Serializer.Serializer;
 import uk.ac.mmu.enterpriseprogrammingrest.Controllers.decoders.Decoder;
+import uk.ac.mmu.enterpriseprogrammingrest.Service.BookService;
 import uk.ac.mmu.enterpriseprogrammingrest.model.BookDAO;
 import uk.ac.mmu.enterpriseprogrammingrest.model.data.BookFilterDTO;
 import uk.ac.mmu.enterpriseprogrammingrest.model.data.BookVO;
@@ -19,11 +20,13 @@ public class RestBookServlet extends HttpServlet {
 
   private ContentRegistry registry;
   private BookDAO bookDAO;
+  private BookService bookService;
 
   @Override
   public void init() {
     this.registry = new ContentRegistry();
     this.bookDAO = (BookDAO) getServletContext().getAttribute("bookDAO");
+    this.bookService = new BookService(bookDAO);
   }
 
 
@@ -42,23 +45,17 @@ public class RestBookServlet extends HttpServlet {
       return;
     }
 
-    Serializer<?> serializer = registry.getSerializer(outType);
+    Serializer<GetRes> serializer = registry.getSerializer(outType);
 
     BookFilterDTO filter = BookFilterDTO.fromRequest(request);
 
-    List<BookVO> books = bookDAO.getBooks(filter);
-    int count = bookDAO.countBooks(filter);
-    int totalPages = (int) Math.ceil((double) count / filter.getSize());
-
-    GetRes data = new GetRes(books, filter.getPage(), totalPages);
+    GetRes data = bookService.getBooks(filter);
 
     response.setContentType(outType);
     response.setCharacterEncoding("UTF-8");
 
     try {
-      response.getWriter().write(
-          ((Serializer<Object>) serializer).serialize(data)
-      );
+      response.getWriter().write(serializer.serialize(data));
     } catch (Exception e) {
       response.sendError(500, e.getMessage());
     }
@@ -82,13 +79,6 @@ public class RestBookServlet extends HttpServlet {
 
     try {
       data = decoder.decode(readBody(request), BookVO.class);
-      if (data.getId() != null) {
-        throw new IllegalArgumentException("No ID is required for Post");
-      }
-      data.validate();
-    } catch (IllegalArgumentException e) {
-      response.sendError(400, e.getMessage());
-      return;
     } catch (Exception e) {
       response.sendError(400, "Invalid request body: " + e.getMessage());
       return;
@@ -101,21 +91,24 @@ public class RestBookServlet extends HttpServlet {
       return;
     }
 
-    Serializer<?> serializer = registry.getSerializer(outType);
+    Serializer<BookVO> serializer = registry.getSerializer(outType);
 
     try {
-      BookVO newBook = bookDAO.addBook(data);
+      BookVO newBook = bookService.createBook(data);
 
       response.setStatus(HttpServletResponse.SC_CREATED);
       response.setContentType(outType);
       response.setCharacterEncoding("UTF-8");
 
-      response.setHeader("Location", "/bookAPI?id=" + newBook.getId());
-
-      response.getWriter().write(
-          ((Serializer<Object>) serializer).serialize(newBook)
+      response.setHeader(
+          "Location",
+          request.getRequestURL().toString() + "?id=" + newBook.getId()
       );
 
+      response.getWriter().write(serializer.serialize(newBook));
+
+    } catch (IllegalArgumentException e) {
+      response.sendError(400, e.getMessage());
     } catch (Exception e) {
       response.sendError(500, "Failed to create book: " + e.getMessage());
     }
@@ -137,27 +130,24 @@ public class RestBookServlet extends HttpServlet {
 
     try {
       data = decoder.decode(readBody(request), BookVO.class);
-
-      if (data.getId() == null || data.getId() <= 0) {
-        throw new IllegalArgumentException("Valid ID is required for update");
-      }
-
-      data.validate();
-
-    } catch (IllegalArgumentException e) {
-      response.sendError(400, e.getMessage());
-      return;
     } catch (Exception e) {
       response.sendError(400, "Invalid request body: " + e.getMessage());
       return;
     }
 
     try {
-      bookDAO.updateBook(data);
+      boolean updated = bookService.updateBook(data);
+
+      if (!updated) {
+        response.sendError(404, "Book not found");
+        return;
+      }
 
       response.setStatus(HttpServletResponse.SC_NO_CONTENT);
       response.setContentLength(0);
 
+    } catch (IllegalArgumentException e) {
+      response.sendError(400, e.getMessage());
     } catch (Exception e) {
       response.sendError(500, "Failed to update book: " + e.getMessage());
     }
@@ -168,18 +158,21 @@ public class RestBookServlet extends HttpServlet {
 
     String idParam = request.getParameter("id");
 
-    if (idParam == null) {
+    if (idParam == null || idParam.isBlank()) {
       response.sendError(400, "Missing id");
       return;
     }
 
     try {
       int id = Integer.parseInt(idParam);
-      bookDAO.deleteBook(id);
+
+      bookService.deleteBook(id);
 
       response.setStatus(HttpServletResponse.SC_NO_CONTENT);
       response.setContentLength(0);
 
+    } catch (NumberFormatException e) {
+      response.sendError(400, "Invalid id format");
     } catch (Exception e) {
       response.sendError(500, "Failed to delete book: " + e.getMessage());
     }
@@ -196,4 +189,5 @@ public class RestBookServlet extends HttpServlet {
     if (contentType == null) return null;
     return contentType.split(";")[0];
   }
+
 }

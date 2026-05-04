@@ -28,10 +28,12 @@ public class ContentRegistry {
     decoders.put(type, d);
   }
 
+  @SuppressWarnings("unchecked")
   public <T> Serializer<T> getSerializer(String type) {
     return (Serializer<T>) serializers.get(type);
   }
 
+  @SuppressWarnings("unchecked")
   public <T> Decoder<T> getDecoder(String type) {
     return (Decoder<T>) decoders.get(type);
   }
