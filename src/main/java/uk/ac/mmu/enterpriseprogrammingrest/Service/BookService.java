@@ -43,7 +43,18 @@ public class BookService {
     return bookDAO.updateBook(data);
   }
 
-  public void deleteBook(int id) {
-    bookDAO.deleteBook(id);
+  public void deleteBook(String id) {
+    if (id == null || id.isBlank()) {
+      throw new IllegalArgumentException("id Cannot be null or blank");
+    }
+
+    int parsedId;
+    try {
+      parsedId = Integer.parseInt(id);
+    } catch (NumberFormatException e) {
+      throw new IllegalArgumentException("Invalid id format");
+    }
+
+    bookDAO.deleteBook(parsedId);
   }
 }
