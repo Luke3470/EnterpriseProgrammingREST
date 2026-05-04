@@ -8,6 +8,7 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
 
+import uk.ac.mmu.enterpriseprogrammingrest.Controllers.Request.DeleteReq;
 import uk.ac.mmu.enterpriseprogrammingrest.Controllers.Response.GetRes;
 import uk.ac.mmu.enterpriseprogrammingrest.Controllers.Serializer.Serializer;
 import uk.ac.mmu.enterpriseprogrammingrest.Controllers.decoders.Decoder;
@@ -119,31 +120,66 @@ public class RestBookServlet extends HttpServlet {
   public void doPut(HttpServletRequest request, HttpServletResponse response) throws IOException {
 
     String contentType = request.getContentType();
-
-    Decoder decoder = registry.getDecoder(contentType);
+    Decoder<BookVO> decoder = registry.getDecoder(contentType);
 
     if (decoder == null) {
       response.sendError(415, "Unsupported input type");
       return;
     }
 
+    String body = request.getReader()
+        .lines()
+        .reduce("", (a, b) -> a + b);
 
+    BookVO data;
 
+    try {
+      data = decoder.decode(body, BookVO.class);
+    } catch (Exception e) {
+      response.sendError(400, "Invalid request body: " + e.getMessage());
+      return;
+    }
 
-    response.setStatus(HttpServletResponse.SC_NO_CONTENT);
+    try {
+      bookDAO.updateBook(data);
+
+      response.setStatus(HttpServletResponse.SC_NO_CONTENT);
+      return;
+    } catch (Exception e) {
+      response.sendError(500, "Failed to edit book: " + e.getMessage());
+    }
   }
 
   @Override
   public void doDelete(HttpServletRequest request, HttpServletResponse response) throws IOException {
 
-    String id = request.getParameter("id");
+    String contentType = request.getContentType();
+    Decoder<DeleteReq> decoder = registry.getDecoder(contentType);
 
-    if (id == null) {
-      response.sendError(400, "Missing id");
+    if (decoder == null) {
+      response.sendError(415, "Unsupported input type");
       return;
     }
 
+    String body = request.getReader()
+        .lines()
+        .reduce("", (a, b) -> a + b);
 
-    response.setStatus(HttpServletResponse.SC_NO_CONTENT);
+    DeleteReq data;
+
+    try {
+      data = decoder.decode(body, DeleteReq.class);
+    } catch (Exception e) {
+      response.sendError(400, "Invalid request body: " + e.getMessage());
+      return;
+    }
+
+    try {
+      bookDAO.deleteBook(data.getId());
+      response.setStatus(HttpServletResponse.SC_NO_CONTENT);
+      return;
+    } catch (Exception e) {
+      response.sendError(500, "Failed to edit book: " + e.getMessage());
+    }
   }
 }
