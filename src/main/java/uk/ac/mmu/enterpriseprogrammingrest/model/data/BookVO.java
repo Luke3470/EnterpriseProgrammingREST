@@ -48,8 +48,16 @@ public class BookVO {
       throw new IllegalArgumentException("Title is required");
     }
 
+    if (title.length() > 255) {
+      throw new IllegalArgumentException("Title is too long");
+    }
+
     if (author == null || author.trim().isEmpty()) {
       throw new IllegalArgumentException("Author is required");
+    }
+
+    if (author.length() > 255) {
+      throw new IllegalArgumentException("Author is too long");
     }
 
     if (date == null || date.trim().isEmpty()) {
@@ -62,9 +70,10 @@ public class BookVO {
       throw new IllegalArgumentException("Invalid date format. Use YYYY-MM-DD");
     }
 
-    if (synopsis != null && synopsis.length() > 1000) {
-      throw new IllegalArgumentException("Synopsis too long");
+    if (genres.length() > 255) {
+      throw new IllegalArgumentException("Genres is too long");
     }
+
   }
 
 
