@@ -7,7 +7,7 @@ public class YAMLDecoder<T> implements Decoder<T> {
   private final Yaml yaml = new Yaml();
 
   @Override
-  public T decode(String data, Class type) {
-    return (T) yaml.loadAs(data, type);
+  public T decode(String data, Class<T> type) {
+    return yaml.loadAs(data, type);
   }
 }

@@ -98,17 +98,19 @@ public class BookDAOImpl implements BookDAO {
 
 
     @Override
-    public void addBook(BookVO book) {
+    public BookVO addBook(BookVO book) {
+
         String sql = """
-            INSERT INTO books 
-            (title, author, date, genres, characters, synopsis, coverUrl)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
-        """;
+        INSERT INTO books 
+        (title, author, date, genres, characters, synopsis, coverUrl)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+    """;
 
         try (
             Connection conn = db.createCon();
-            PreparedStatement ps = conn.prepareStatement(sql)
+            PreparedStatement ps = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)
         ) {
+
             ps.setString(1, book.getTitle());
             ps.setString(2, book.getAuthor());
             ps.setString(3, book.getDate());
@@ -119,9 +121,27 @@ public class BookDAOImpl implements BookDAO {
 
             ps.executeUpdate();
 
+            try (ResultSet rs = ps.getGeneratedKeys()) {
+                if (rs.next()) {
+                    int id = rs.getInt(1);
+
+                    return new BookVO(
+                        id,
+                        book.getTitle(),
+                        book.getAuthor(),
+                        book.getDate(),
+                        book.getGenres(),
+                        book.getCharacters(),
+                        book.getSynopsis(),
+                        book.getCoverUrl()
+                    );
+                }
+            }
+
         } catch (SQLException e) {
-            throw  new DataAccessException("Failed to add New book:" + book.getTitle(), e);
+            throw new DataAccessException("Failed to add New book: " + book.getTitle(), e);
         }
+      return book;
     }
 
      @Override

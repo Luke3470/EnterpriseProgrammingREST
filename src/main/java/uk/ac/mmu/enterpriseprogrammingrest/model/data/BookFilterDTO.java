@@ -13,8 +13,6 @@ public class BookFilterDTO {
   private String dateTo;
   private List<String> genres = new ArrayList<>();
 
-
-
   private Integer id;
 
   private int page = 1;

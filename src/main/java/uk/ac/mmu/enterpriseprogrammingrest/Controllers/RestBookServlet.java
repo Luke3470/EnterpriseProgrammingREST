@@ -40,7 +40,7 @@ public class RestBookServlet extends HttpServlet {
       response.sendError(406, "Unsupported output type");
       return;
     }
-    Serializer serializer = registry.getSerializer(outType);
+    Serializer<GetRes> serializer = registry.getSerializer(outType);
 
     BookFilterDTO filter = BookFilterDTO.fromRequest(request);
 
@@ -70,14 +70,25 @@ public class RestBookServlet extends HttpServlet {
     String contentType = request.getContentType();
     String accept = request.getHeader("Accept");
 
-    Decoder decoder = registry.getDecoder(contentType);
+    Decoder<BookVO> decoder = registry.getDecoder(contentType);
 
     if (decoder == null) {
       response.sendError(415, "Unsupported input type");
       return;
     }
 
+    String body = request.getReader()
+        .lines()
+        .reduce("", (a, b) -> a + b);
 
+    BookVO data;
+
+    try {
+      data = decoder.decode(body, BookVO.class);
+    } catch (Exception e) {
+      response.sendError(400, "Invalid request body: " + e.getMessage());
+      return;
+    }
 
     String outType = ContentNegotiator.negotiate(
         accept,
@@ -89,11 +100,19 @@ public class RestBookServlet extends HttpServlet {
       return;
     }
 
-    Serializer serializer = registry.getSerializer(outType);
+    Serializer<BookVO> serializer = registry.getSerializer(outType);
 
-    response.setContentType(outType);
-    response.setCharacterEncoding("UTF-8");
+    try {
+      BookVO newBook = bookDAO.addBook(data);
 
+      response.setContentType(outType);
+      response.setCharacterEncoding("UTF-8");
+      response.setStatus(HttpServletResponse.SC_CREATED);
+      response.getWriter().write(serializer.serialize(newBook));
+
+    } catch (Exception e) {
+      response.sendError(500, "Failed to create book: " + e.getMessage());
+    }
   }
 
   @Override

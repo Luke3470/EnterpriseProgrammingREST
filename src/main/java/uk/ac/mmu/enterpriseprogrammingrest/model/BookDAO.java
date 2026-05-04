@@ -11,7 +11,7 @@ public interface BookDAO {
 
   BookVO getBook(int id);
 
-  void addBook(BookVO book);
+  BookVO addBook(BookVO book);
 
   void deleteBook(int id);
 

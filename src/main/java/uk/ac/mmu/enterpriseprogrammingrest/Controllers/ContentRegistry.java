@@ -14,8 +14,8 @@ import uk.ac.mmu.enterpriseprogrammingrest.Controllers.decoders.YAMLDecoder;
 
 public class ContentRegistry {
 
-  private final Map<String, Serializer> serializers = new HashMap<>();
-  private final Map<String, Decoder> decoders = new HashMap<>();
+  private final Map<String, Serializer<?>> serializers = new HashMap<>();
+  private final Map<String, Decoder<?>> decoders = new HashMap<>();
 
   public ContentRegistry() {
     register("application/json", new JSONSerializer(), new JSONDecoder());
@@ -23,17 +23,17 @@ public class ContentRegistry {
     register("application/x-yaml", new YAMLSerializer(), new YAMLDecoder());
   }
 
-  private void register(String type, Serializer s, Decoder d) {
+  private void register(String type, Serializer<?> s, Decoder<?> d) {
     serializers.put(type, s);
     decoders.put(type, d);
   }
 
-  public Serializer getSerializer(String type) {
-    return serializers.get(type);
+  public <T> Serializer<T> getSerializer(String type) {
+    return (Serializer<T>) serializers.get(type);
   }
 
-  public Decoder getDecoder(String type) {
-    return decoders.get(type);
+  public <T> Decoder<T> getDecoder(String type) {
+    return (Decoder<T>) decoders.get(type);
   }
 
   public Set<String> supportedTypes() {
