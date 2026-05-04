@@ -1,5 +1,7 @@
 package uk.ac.mmu.enterpriseprogrammingrest.model.data;
 
+import java.time.LocalDate;
+import java.time.format.DateTimeParseException;
 import javax.xml.bind.annotation.XmlRootElement;
 import javax.xml.bind.annotation.XmlAccessorType;
 import javax.xml.bind.annotation.XmlAccessType;
@@ -38,6 +40,31 @@ public class BookVO {
     this.characters = characters;
     this.synopsis = synopsis;
     this.coverUrl = coverUrl;
+  }
+
+  public void validate() {
+
+    if (title == null || title.trim().isEmpty()) {
+      throw new IllegalArgumentException("Title is required");
+    }
+
+    if (author == null || author.trim().isEmpty()) {
+      throw new IllegalArgumentException("Author is required");
+    }
+
+    if (date == null || date.trim().isEmpty()) {
+      throw new IllegalArgumentException("Date is required (format: YYYY-MM-DD)");
+    }
+
+    try {
+      LocalDate.parse(date);
+    } catch (DateTimeParseException e) {
+      throw new IllegalArgumentException("Invalid date format. Use YYYY-MM-DD");
+    }
+
+    if (synopsis != null && synopsis.length() > 1000) {
+      throw new IllegalArgumentException("Synopsis too long");
+    }
   }
 
 

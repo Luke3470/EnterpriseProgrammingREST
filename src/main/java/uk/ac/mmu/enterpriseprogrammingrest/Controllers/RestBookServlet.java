@@ -82,6 +82,13 @@ public class RestBookServlet extends HttpServlet {
 
     try {
       data = decoder.decode(readBody(request), BookVO.class);
+      if (data.getId() != null) {
+        throw new IllegalArgumentException("No ID is required for Post");
+      }
+      data.validate();
+    } catch (IllegalArgumentException e) {
+      response.sendError(400, e.getMessage());
+      return;
     } catch (Exception e) {
       response.sendError(400, "Invalid request body: " + e.getMessage());
       return;
@@ -130,6 +137,16 @@ public class RestBookServlet extends HttpServlet {
 
     try {
       data = decoder.decode(readBody(request), BookVO.class);
+
+      if (data.getId() == null || data.getId() <= 0) {
+        throw new IllegalArgumentException("Valid ID is required for update");
+      }
+
+      data.validate();
+
+    } catch (IllegalArgumentException e) {
+      response.sendError(400, e.getMessage());
+      return;
     } catch (Exception e) {
       response.sendError(400, "Invalid request body: " + e.getMessage());
       return;
