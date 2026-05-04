@@ -3,6 +3,7 @@ package uk.ac.mmu.enterpriseprogrammingrest.Controllers;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
+import javax.servlet.http.HttpServletRequest;
 import uk.ac.mmu.enterpriseprogrammingrest.Controllers.Serializer.YAMLSerializer;
 import uk.ac.mmu.enterpriseprogrammingrest.Controllers.Serializer.JSONSerializer;
 import uk.ac.mmu.enterpriseprogrammingrest.Controllers.Serializer.Serializer;
@@ -40,5 +41,20 @@ public class ContentRegistry {
 
   public Set<String> supportedTypes() {
     return serializers.keySet();
+  }
+
+  public String negotiate(HttpServletRequest req) {
+    return ContentNegotiator.negotiate(
+        req.getHeader("Accept"),
+        supportedTypes()
+    );
+  }
+
+  public <T> Decoder<T> requireDecoder(String contentType) {
+    Decoder<T> decoder = (Decoder<T>) decoders.get(contentType);
+    if (decoder == null) {
+      throw new IllegalArgumentException("Unsupported input type");
+    }
+    return decoder;
   }
 }

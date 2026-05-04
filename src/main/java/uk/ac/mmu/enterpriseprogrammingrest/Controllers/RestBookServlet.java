@@ -6,7 +6,9 @@ import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
+import uk.ac.mmu.enterpriseprogrammingrest.Controllers.Response.ErrorWriter;
 import uk.ac.mmu.enterpriseprogrammingrest.Controllers.Response.GetRes;
+import uk.ac.mmu.enterpriseprogrammingrest.Controllers.Response.ResponseWriter;
 import uk.ac.mmu.enterpriseprogrammingrest.Controllers.Serializer.Serializer;
 import uk.ac.mmu.enterpriseprogrammingrest.Controllers.decoders.Decoder;
 import uk.ac.mmu.enterpriseprogrammingrest.Service.BookService;
@@ -31,15 +33,10 @@ public class RestBookServlet extends HttpServlet {
   @Override
   public void doGet(HttpServletRequest request, HttpServletResponse response) throws IOException {
 
-    String accept = request.getHeader("Accept");
-
-    String outType = ContentNegotiator.negotiate(
-        accept,
-        registry.supportedTypes()
-    );
+    String outType = registry.negotiate(request);
 
     if (outType == null) {
-      response.sendError(406, "Unsupported output type");
+      ErrorWriter.unsupportedMedia(response);
       return;
     }
 
@@ -49,13 +46,10 @@ public class RestBookServlet extends HttpServlet {
 
     GetRes data = bookService.getBooks(filter);
 
-    response.setContentType(outType);
-    response.setCharacterEncoding("UTF-8");
-
     try {
-      response.getWriter().write(serializer.serialize(data));
+      ResponseWriter.write(response, outType, serializer.serialize(data));
     } catch (Exception e) {
-      response.sendError(500, e.getMessage());
+      ErrorWriter.serverError(response, e.getMessage());
     }
   }
 
@@ -64,51 +58,33 @@ public class RestBookServlet extends HttpServlet {
   public void doPost(HttpServletRequest request, HttpServletResponse response) throws IOException {
 
     String contentType = cleanContentType(request.getContentType());
-    String accept = request.getHeader("Accept");
+    String outType = registry.negotiate(request);
 
-    Decoder<BookVO> decoder = registry.getDecoder(contentType);
-
-    if (decoder == null) {
-      response.sendError(415, "Unsupported input type");
+    if (outType == null) {
+      ErrorWriter.unsupportedMedia(response);
       return;
     }
+
+    Serializer<BookVO> serializer = registry.getSerializer(outType);
+    Decoder<BookVO> decoder = registry.requireDecoder(contentType);
 
     BookVO data;
 
     try {
       data = decoder.decode(readBody(request), BookVO.class);
     } catch (Exception e) {
-      response.sendError(400, "Invalid request body: " + e.getMessage());
+      ErrorWriter.badRequest(response, "Invalid request body: " + e.getMessage());
       return;
     }
-
-    String outType = ContentNegotiator.negotiate(accept, registry.supportedTypes());
-
-    if (outType == null) {
-      response.sendError(406, "Unsupported output type");
-      return;
-    }
-
-    Serializer<BookVO> serializer = registry.getSerializer(outType);
 
     try {
       BookVO newBook = bookService.createBook(data);
-
-      response.setStatus(HttpServletResponse.SC_CREATED);
-      response.setContentType(outType);
-      response.setCharacterEncoding("UTF-8");
-
-      response.setHeader(
-          "Location",
-          request.getRequestURL().toString() + "?id=" + newBook.getId()
-      );
-
-      response.getWriter().write(serializer.serialize(newBook));
+      ResponseWriter.created(response, request.getRequestURL().toString() + "?id=" + newBook.getId(),outType,serializer.serialize(newBook));
 
     } catch (IllegalArgumentException e) {
-      response.sendError(400, e.getMessage());
+      ErrorWriter.badRequest(response, e.getMessage());
     } catch (Exception e) {
-      response.sendError(500, "Failed to create book: " + e.getMessage());
+      ErrorWriter.serverError(response,"Failed to create book: " + e.getMessage());
     }
   }
 
@@ -117,19 +93,14 @@ public class RestBookServlet extends HttpServlet {
 
     String contentType = cleanContentType(request.getContentType());
 
-    Decoder<BookVO> decoder = registry.getDecoder(contentType);
-
-    if (decoder == null) {
-      response.sendError(415, "Unsupported input type");
-      return;
-    }
+    Decoder<BookVO> decoder = registry.requireDecoder(contentType);
 
     BookVO data;
 
     try {
       data = decoder.decode(readBody(request), BookVO.class);
     } catch (Exception e) {
-      response.sendError(400, "Invalid request body: " + e.getMessage());
+      ErrorWriter.badRequest(response, e.getMessage());
       return;
     }
 
@@ -137,17 +108,16 @@ public class RestBookServlet extends HttpServlet {
       boolean updated = bookService.updateBook(data);
 
       if (!updated) {
-        response.sendError(404, "Book not found");
+        ErrorWriter.notFound(response, "Book not found");
         return;
       }
 
-      response.setStatus(HttpServletResponse.SC_NO_CONTENT);
-      response.setContentLength(0);
+      ResponseWriter.noContent(response);
 
     } catch (IllegalArgumentException e) {
-      response.sendError(400, e.getMessage());
+      ErrorWriter.badRequest(response, e.getMessage());
     } catch (Exception e) {
-      response.sendError(500, "Failed to update book: " + e.getMessage());
+      ErrorWriter.serverError(response, "Failed to update book: " + e.getMessage());
     }
   }
 
@@ -155,24 +125,15 @@ public class RestBookServlet extends HttpServlet {
   public void doDelete(HttpServletRequest request, HttpServletResponse response) throws IOException {
 
     String idParam = request.getParameter("id");
-
-    if (idParam == null || idParam.isBlank()) {
-      response.sendError(400, "Missing id");
-      return;
-    }
-
     try {
-      int id = Integer.parseInt(idParam);
+      bookService.deleteBook(idParam);
 
-      bookService.deleteBook(id);
-
-      response.setStatus(HttpServletResponse.SC_NO_CONTENT);
-      response.setContentLength(0);
+      ResponseWriter.noContent(response);
 
     } catch (NumberFormatException e) {
-      response.sendError(400, "Invalid id format");
+      ErrorWriter.badRequest(response, "Invalid id");
     } catch (Exception e) {
-      response.sendError(500, "Failed to delete book: " + e.getMessage());
+      ErrorWriter.serverError(response, "Failed to delete book: " + e.getMessage());
     }
   }
 
