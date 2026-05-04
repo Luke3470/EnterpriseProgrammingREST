@@ -109,18 +109,18 @@ public class BookDAOImpl implements BookDAO {
             Connection conn = db.createCon();
             PreparedStatement ps = conn.prepareStatement(sql)
         ) {
-            ps.setString(1, book.title());
-            ps.setString(2, book.author());
-            ps.setString(3, book.date());
-            ps.setString(4, book.genres());
-            ps.setString(5, book.characters());
-            ps.setString(6, book.synopsis());
-            ps.setString(7, book.coverUrl());
+            ps.setString(1, book.getTitle());
+            ps.setString(2, book.getAuthor());
+            ps.setString(3, book.getDate());
+            ps.setString(4, book.getGenres());
+            ps.setString(5, book.getCharacters());
+            ps.setString(6, book.getSynopsis());
+            ps.setString(7, book.getCoverUrl());
 
             ps.executeUpdate();
 
         } catch (SQLException e) {
-            throw  new DataAccessException("Failed to add New book:" + book.title(), e);
+            throw  new DataAccessException("Failed to add New book:" + book.getTitle(), e);
         }
     }
 
@@ -136,19 +136,19 @@ public class BookDAOImpl implements BookDAO {
             Connection conn = db.createCon();
             PreparedStatement ps = conn.prepareStatement(sql)
         ) {
-            ps.setString(1, book.title());
-            ps.setString(2, book.author());
-            ps.setString(3, book.date());
-            ps.setString(4, book.genres());
-            ps.setString(5, book.characters());
-            ps.setString(6, book.synopsis());
-            ps.setString(7, book.coverUrl());
-            ps.setInt(8, book.id());
+            ps.setString(1, book.getTitle());
+            ps.setString(2, book.getAuthor());
+            ps.setString(3, book.getDate());
+            ps.setString(4, book.getGenres());
+            ps.setString(5, book.getCharacters());
+            ps.setString(6, book.getSynopsis());
+            ps.setString(7, book.getCoverUrl());
+            ps.setInt(8, book.getId());
 
             ps.executeUpdate();
 
         } catch (SQLException e) {
-            throw new DataAccessException("Failed to update book: "+ book.id(), e);
+            throw new DataAccessException("Failed to update book: "+ book.getId(), e);
         }
     }
 
@@ -234,6 +234,11 @@ public class BookDAOImpl implements BookDAO {
         if (filter.getDateFrom() != null) {
             sql.append(" AND date >= ? ");
             params.add(filter.getDateFrom());
+        }
+
+        if (filter.getId() != null) {
+            sql.append(" AND ID = ? ");
+            params.add(filter.getId());
         }
 
         if (filter.getDateTo() != null) {

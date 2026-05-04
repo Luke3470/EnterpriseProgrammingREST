@@ -13,6 +13,10 @@ public class BookFilterDTO {
   private String dateTo;
   private List<String> genres = new ArrayList<>();
 
+
+
+  private Integer id;
+
   private int page = 1;
   private final int size = 12;
 
@@ -23,6 +27,12 @@ public class BookFilterDTO {
     filter.query = trim(req.getParameter("books"));
     filter.dateFrom = trim(req.getParameter("dateFrom"));
     filter.dateTo = trim(req.getParameter("dateTo"));
+    try {
+      filter.id = Integer.parseInt(req.getParameter("id"));
+    }catch (Exception e) {
+      //If cannot be parsed Ignore
+      filter.id = null;
+    }
     String[] genreArr = req.getParameterValues("genre");
     if (genreArr != null) {
       filter.genres = Arrays.stream(genreArr)
@@ -53,6 +63,8 @@ public class BookFilterDTO {
         .collect(Collectors.toList());
 
     if (page < 1) page = 1;
+    if (id != null)
+      if (id < 1 ) id = null;
   }
 
 
@@ -72,6 +84,9 @@ public class BookFilterDTO {
     return size;
   }
 
+  public Integer getId() {
+    return id;
+  }
 
   public String getQuery() { return query; }
   public String getDateFrom() { return dateFrom; }

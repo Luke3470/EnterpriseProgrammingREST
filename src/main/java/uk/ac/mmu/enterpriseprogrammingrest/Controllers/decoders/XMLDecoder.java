@@ -1,6 +1,8 @@
 package uk.ac.mmu.enterpriseprogrammingrest.Controllers.decoders;
 
 import java.io.StringReader;
+import javax.xml.bind.JAXBContext;
+import javax.xml.bind.Unmarshaller;
 
 public class XMLDecoder<T> implements Decoder<T> {
 

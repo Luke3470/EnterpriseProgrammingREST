@@ -1,7 +1,9 @@
 package uk.ac.mmu.enterpriseprogrammingrest.Controllers.Serializer;
 
-import jakarta.xml.bind.*;
+
 import java.io.StringWriter;
+import javax.xml.bind.JAXBContext;
+import javax.xml.bind.Marshaller;
 
 public class XMLSerializer<T> implements Serializer<T> {
 

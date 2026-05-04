@@ -19,7 +19,12 @@ import uk.ac.mmu.enterpriseprogrammingrest.model.data.BookVO;
 public class RestBookServlet extends HttpServlet {
 
   private final ContentRegistry registry = new ContentRegistry();
-  private final BookDAO bookDAO = (BookDAO) getServletContext().getAttribute("bookDAO");
+  private BookDAO bookDAO;
+
+  @Override
+  public void init() {
+    this.bookDAO = (BookDAO) getServletContext().getAttribute("bookDAO");
+  }
 
   @Override
   public void doGet(HttpServletRequest request, HttpServletResponse response) throws IOException {
