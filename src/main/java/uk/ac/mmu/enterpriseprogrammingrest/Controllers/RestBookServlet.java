@@ -141,7 +141,7 @@ public class RestBookServlet extends HttpServlet {
   private String readBody(HttpServletRequest request) throws IOException {
     return request.getReader()
         .lines()
-        .reduce("", (a, b) -> a + b);
+        .reduce("", (a, b) -> a + b + "\n");
   }
 
   private String cleanContentType(String contentType) {
